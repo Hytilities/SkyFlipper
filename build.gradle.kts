@@ -7,6 +7,8 @@ import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
 // which we use to prepare the environment.
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization") version "1.6.21"
+
     id("cc.polyfrost.multi-version")
     id("cc.polyfrost.defaults.repo")
     id("cc.polyfrost.defaults.java")
@@ -16,6 +18,8 @@ plugins {
     id("signing")
     java
 }
+
+val ktor_version: String by project
 
 // Gets the mod name, version and id from the `gradle.properties` file.
 val mod_name: String by project
@@ -95,6 +99,20 @@ repositories {
 dependencies {
     // Adds the OneConfig library, so we can develop with it.
     modCompileOnly("cc.polyfrost:oneconfig-$platform:0.2.0-alpha+")
+
+    // Kotlin dependency.
+    shade(platform(kotlin("bom")))
+
+    // Ktor dependencies.
+    shade(platform(ktor("bom", "2.3.0", addSuffix = false)))
+    shade(platform(ktor("serialization-kotlinx-json", version  = "1.6.21", addSuffix = false)))
+
+    shade(ktorClient("core"))
+    shade(ktorClient("cio"))
+    shade(ktorClient("content-negotiation"))
+    shade(ktorClient("json"))
+    shade(ktorClient("encoding"))
+
 
     // If we are building for legacy forge, includes the launch wrapper with `shade` as we configured earlier.
     if (platform.isLegacyForge) {
@@ -192,3 +210,8 @@ tasks {
         enabled = false
     }
 }
+
+fun DependencyHandler.ktor(module: String, version: String? = ktor_version, addSuffix: Boolean = true) =
+    "io.ktor:ktor-$module${if (addSuffix) "-jvm" else ""}${version?.let { ":$version" } ?: ""}"
+
+fun DependencyHandler.ktorClient(module: String, version: String? = ktor_version) = ktor("client-${module}", version)
